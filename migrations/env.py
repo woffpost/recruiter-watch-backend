@@ -9,8 +9,15 @@ from models.company import CompanyDB
 from models.review import ReviewDB
 from models.user import UserDB
 from database import Base
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+    
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
