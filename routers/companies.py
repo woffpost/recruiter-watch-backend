@@ -14,6 +14,36 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 def get_companies(db: Session = Depends(get_db)):
     return db.query(CompanyDB).all()
 
+@router.get("/match")
+def match_companies(skills: str, db: Session = Depends(get_db)):
+    skill_list = [s.strip().lower() for s in skills.split(",")]
+    companies = db.query(CompanyDB).all()
+    
+    results = []
+    for company in companies:
+        reviews = db.query(ReviewDB).filter(ReviewDB.company_id == company.id).all()
+        avg_rating = round(sum(r.rating for r in reviews) / len(reviews), 1) if reviews else 0
+        
+        score = 0
+        if company.tech_stack:
+            company_stack = company.tech_stack.lower()
+            matches = sum(1 for skill in skill_list if skill in company_stack)
+            score = matches
+        
+        if score > 0 or avg_rating > 0:
+            results.append({
+                "id": company.id,
+                "name": company.name,
+                "industry": company.industry,
+                "tech_stack": company.tech_stack,
+                "avg_rating": avg_rating,
+                "review_count": len(reviews),
+                "skill_match": score
+            })
+    
+    results.sort(key=lambda x: (x["skill_match"], x["avg_rating"]), reverse=True)
+    return results[:10]
+
 @router.post("/", response_model=CompanyResponse)
 def create_company(company: CompanyCreate, db: Session = Depends(get_db)):
     db_company = CompanyDB(**company.model_dump())
